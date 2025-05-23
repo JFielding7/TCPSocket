@@ -63,23 +63,50 @@ void create_server_socket(server_t *server) {
 }
 
 
+void accept_connection(server_t *server) {
+    struct sockaddr_in client;
+    socklen_t len = sizeof(client);
+    int client_fd = accept(server->listen_fd, (struct sockaddr*) &client, &len);
+
+    if (client_fd == -1) {
+        perror("accept");
+        return;
+    }
+    set_nonblock(client_fd);
+
+    printf("Client connected\n");
+
+    struct epoll_event event = {
+        .events = EPOLLIN,
+        .data.fd = client_fd,
+    };
+    epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, client_fd, &event);
+}
+
+
+void read_client_data(server_t *server, int client_fd) {
+    const int max_bytes = 8;
+    char buffer[max_bytes];
+    int bytes = read(client_fd, buffer, max_bytes);
+
+    if (bytes <= 0) {
+        close(client_fd);
+    } else {
+        printf("Received bytes: %d\n", bytes);
+        printf("Received data: %.*s\n", bytes, buffer);
+    }
+}
+
+
 void handle_events(server_t *server, int num_events) {
     for (int i = 0; i < num_events; i++) {
-        if (server->events[i].data.fd == server->listen_fd) {
-            struct sockaddr_in client;
-            socklen_t len = sizeof(client);
-            int client_fd = accept(server->listen_fd, (struct sockaddr*) &client, &len);
+        int event_fd = server->events[i].data.fd;
 
-            if (client_fd == -1) {
-                perror("accept");
-                continue;
-            }
-
-            set_nonblock(client_fd);
-
-            printf("Client connected\n");
+        if (event_fd == server->listen_fd) {
+            accept_connection(server);
+        } else {
+            read_client_data(server, event_fd);
         }
-
     }
 }
 
