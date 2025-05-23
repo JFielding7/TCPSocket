@@ -49,13 +49,13 @@ void create_server_socket(server_t *server) {
     };
 
     if (bind(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
-        perror("Failed to bind");
+        perror("bind");
         exit(EXIT_FAILURE);
     }
     printf("Binding successful\n");
 
     if (listen(socket_fd, SOMAXCONN) == -1) {
-        perror("Failed to listen\n");
+        perror("listen");
         exit(EXIT_FAILURE);
     }
 
@@ -71,7 +71,7 @@ void handle_events(server_t *server, int num_events) {
             int client_fd = accept(server->listen_fd, (struct sockaddr*) &client, &len);
 
             if (client_fd == -1) {
-                perror("Failed to connect to client");
+                perror("accept");
                 continue;
             }
 
@@ -87,7 +87,7 @@ void handle_events(server_t *server, int num_events) {
 void wait_for_events(server_t *server) {
     int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1) {
-        perror("Failed to create epoll instance");
+        perror("epoll_create1");
         exit(EXIT_FAILURE);
     }
     server->epoll_fd = epoll_fd;
@@ -108,7 +108,7 @@ void wait_for_events(server_t *server) {
 
         if (num_events == -1) {
             if (errno == EINTR) continue;
-            perror("Failed to wait for epoll events");
+            perror("epoll_wait");
             exit(EXIT_FAILURE);
         }
 
