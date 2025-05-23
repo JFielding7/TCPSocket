@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 
+#include "thread_pool.h"
+
 #define PORT 7000
 #define MAX_EVENTS 64
 
@@ -40,6 +42,8 @@ void create_server_socket(server_t *server) {
         perror("Failed to create socket");
     }
 
+    int option = 1;
+    setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
     set_nonblock(socket_fd);
 
     struct sockaddr_in addr = {
@@ -73,7 +77,8 @@ void accept_connection(server_t *server) {
         return;
     }
     set_nonblock(client_fd);
-
+    char buffer[1024];
+    read(client_fd, buffer, 1024);
     printf("Client connected\n");
 
     struct epoll_event event = {
@@ -145,10 +150,11 @@ void wait_for_events(server_t *server) {
 
 
 int main(void) {
-    server_t server;
-    create_server_socket(&server);
-    wait_for_events(&server);
-    close(server.listen_fd);
+    thread_pool_t thread_pool = thread_pool_create(5);
+    // server_t server;
+    // create_server_socket(&server);
+    // wait_for_events(&server);
+    // close(server.listen_fd);
 
     return 0;
 }

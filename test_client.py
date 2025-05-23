@@ -1,6 +1,5 @@
 import socket
 
-
 host = '127.0.0.1'
 port = 7000
 
@@ -11,8 +10,10 @@ try:
     print(f"Connected to {host}:{port}")
 
     message = "DK won"
-    client_socket.sendall(message.encode())
-    print("Sent")
+    while 1:
+        client_socket.sendall(message.encode())
+        print("Sent")
+        message = input()
 
 finally:
     client_socket.close()
