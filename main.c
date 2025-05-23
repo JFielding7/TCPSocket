@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <sys/epoll.h>
+
+#define PORT 7000
+#define MAX_EVENTS 64
+
+
+typedef struct server_s {
+    int listen_fd;
+    int epoll_fd;
+    struct epoll_event events[MAX_EVENTS];
+
+} server_t;
+
+
+void set_nonblock(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        perror("Failed to get file descriptor flags");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("Failed to set file descriptor flags");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void create_server_socket(server_t *server) {
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (socket_fd == -1) {
+        perror("Failed to create socket");
+    }
+
+    set_nonblock(socket_fd);
+
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(PORT),
+        .sin_addr.s_addr = INADDR_ANY
+    };
+
+    if (bind(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
+        perror("Failed to bind");
+        exit(EXIT_FAILURE);
+    }
+    printf("Binding successful\n");
+
+    if (listen(socket_fd, SOMAXCONN) == -1) {
+        perror("Failed to listen\n");
+        exit(EXIT_FAILURE);
+    }
+
+    server->listen_fd = socket_fd;
+}
+
+
+void handle_events(server_t *server, int num_events) {
+    for (int i = 0; i < num_events; i++) {
+        if (server->events[i].data.fd == server->listen_fd) {
+            struct sockaddr_in client;
+            socklen_t len = sizeof(client);
+            int client_fd = accept(server->listen_fd, (struct sockaddr*) &client, &len);
+
+            if (client_fd == -1) {
+                perror("Failed to connect to client");
+                continue;
+            }
+
+            set_nonblock(client_fd);
+
+            printf("Client connected\n");
+        }
+
+    }
+}
+
+
+void wait_for_events(server_t *server) {
+    int epoll_fd = epoll_create1(0);
+    if (epoll_fd == -1) {
+        perror("Failed to create epoll instance");
+        exit(EXIT_FAILURE);
+    }
+    server->epoll_fd = epoll_fd;
+
+    struct epoll_event event = {
+        .events = EPOLLIN,
+        .data.fd = server->listen_fd
+    };
+
+    int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server->listen_fd, &event);
+    if (ret == -1) {
+        perror("Failed to add server socket listener file descriptor to epoll");
+    }
+
+    while (1) {
+        printf("Waiting for events\n");
+        int num_events = epoll_wait(epoll_fd, server->events, MAX_EVENTS, -1);
+
+        if (num_events == -1) {
+            if (errno == EINTR) continue;
+            perror("Failed to wait for epoll events");
+            exit(EXIT_FAILURE);
+        }
+
+        handle_events(server, num_events);
+    }
+}
+
+
+int main(void) {
+    server_t server;
+    create_server_socket(&server);
+    wait_for_events(&server);
+    close(server.listen_fd);
+
+    return 0;
+}
