@@ -15,6 +15,7 @@ struct thread_pool_s {
 
 void* worker_thread(void *args) {
     puts("Hello");
+    // pthread_cond_wait()
     return NULL;
 }
 

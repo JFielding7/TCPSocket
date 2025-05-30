@@ -77,8 +77,7 @@ void accept_connection(server_t *server) {
         return;
     }
     set_nonblock(client_fd);
-    char buffer[1024];
-    read(client_fd, buffer, 1024);
+
     printf("Client connected\n");
 
     struct epoll_event event = {
@@ -150,11 +149,16 @@ void wait_for_events(server_t *server) {
 
 
 int main(void) {
-    thread_pool_t thread_pool = thread_pool_create(5);
+    // thread_pool_t thread_pool = thread_pool_create(5);
     // server_t server;
     // create_server_socket(&server);
     // wait_for_events(&server);
     // close(server.listen_fd);
+    // struct sockaddr_in client;
+    // int x;
+    // scanf("%d", &x);
+    // unsigned long abc[x];
+    printf("Size: %lu, %lu", sizeof(struct sockaddr_in), sizeof(struct sockaddr));
 
     return 0;
 }
